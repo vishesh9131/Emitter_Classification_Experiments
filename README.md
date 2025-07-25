@@ -4,9 +4,9 @@ Repository for Experiments conducted for Emitter Classification Project
 
 ## Jupyter Notebooks Overview
 
-### Harshwardhan/Embedding/Embedding.ipynb
+### [Harshwardhan/Embedding/Embedding.ipynb](Harshwardhan/Embedding/Embedding.ipynb)
 
-- **Purpose**: Emitter classification using Siamese Triplet Loss with Artificial Neural Networks
+- **Purpose**: Emitter classification using Siamese Triplet Loss with Artificial Neural Networks[]
 - **Conclusion**: 98% Accurate
 - **Key Features**:
 
@@ -17,7 +17,7 @@ Repository for Experiments conducted for Emitter Classification Project
   - Saves trained model weights for inference
   - Includes data normalization and train/test splitting
 
-### Harshwardhan/EDA/LabelChecking.ipynb
+### [Harshwardhan/EDA/LabelChecking.ipynb](Harshwardhan/EDA/LabelChecking.ipynb)
 
 - **Purpose**: To check whether we should consider same label from different sets as one
 - **Key Features**:
@@ -28,7 +28,7 @@ Repository for Experiments conducted for Emitter Classification Project
   - Helps identify data quality and consistency issues
 - **Conclusion**: Since the distribution varies across sets, we can consider them to be different. Ex - Label F from set 3 would be a different label than Label F from set 5
 
-### Harshwardhan/Generating data/VAEs.ipynb
+### [Harshwardhan/Generating data/VAEs.ipynb](Harshwardhan/Generating%20data/VAEs.ipynb)
 
 - **Purpose**: Synthetic data generation using Variational Autoencoders (VAEs)
 - **Key Features**:
