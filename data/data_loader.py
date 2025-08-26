@@ -38,10 +38,32 @@ def load_excel_data(data_path: str, features: List[str], label_col: str = 'Name'
     # load each file
     for file_path in excel_files:
         try:
+            # try different engines for Excel files
+            df = None
             if file_path.endswith('.xls'):
-                df = pd.read_excel(file_path, engine='xlrd')
-            else:
-                df = pd.read_excel(file_path, engine='openpyxl')
+                try:
+                    df = pd.read_excel(file_path, engine='xlrd')
+                except Exception as e1:
+                    print(f"Failed to read {file_path} with xlrd: {e1}")
+                    try:
+                        df = pd.read_excel(file_path, engine='openpyxl')
+                    except Exception as e2:
+                        print(f"Failed to read {file_path} with openpyxl: {e2}")
+                        continue
+            else:  # .xlsx files
+                try:
+                    df = pd.read_excel(file_path, engine='openpyxl')
+                except Exception as e1:
+                    print(f"Failed to read {file_path} with openpyxl: {e1}")
+                    try:
+                        df = pd.read_excel(file_path, engine='xlrd')
+                    except Exception as e2:
+                        print(f"Failed to read {file_path} with xlrd: {e2}")
+                        continue
+            
+            if df is None:
+                print(f"Could not read {file_path} with any engine")
+                continue
             
             # filter out deleted emitters if Status column exists
             if 'Status' in df.columns:
@@ -52,8 +74,9 @@ def load_excel_data(data_path: str, features: List[str], label_col: str = 'Name'
             if all(col in df.columns for col in required_cols):
                 df = df[required_cols]
                 all_data.append(df)
+                print(f"Successfully loaded {file_path}")
             else:
-                print(f"Warning: Missing columns in {file_path}")
+                print(f"Warning: Missing columns in {file_path}. Available: {list(df.columns)}")
                 
         except Exception as e:
             print(f"Error loading {file_path}: {e}")
