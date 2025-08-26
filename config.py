@@ -230,6 +230,20 @@ def get_parser() -> argparse.ArgumentParser:
         help='Path to pretrained model for evaluation'
     )
     
+    # Visualization parameters
+    parser.add_argument(
+        '--max_test_samples', 
+        type=int, 
+        default=10000,
+        help='Maximum number of test samples to use for visualization (default: 10000)'
+    )
+    
+    parser.add_argument(
+        '--skip_visualization', 
+        action='store_true',
+        help='Skip visualization generation to save time'
+    )
+    
     return parser
 
 def get_config(args: argparse.Namespace) -> Dict[str, Any]:
@@ -253,6 +267,10 @@ def get_config(args: argparse.Namespace) -> Dict[str, Any]:
         'evaluation': {
             'eval_only': args.eval_only,
             'model_path': args.model_path
+        },
+        'visualization': {
+            'max_test_samples': args.max_test_samples,
+            'skip_visualization': args.skip_visualization
         }
     }
     

@@ -252,31 +252,48 @@ def main():
     final_metrics = evaluate_model(model, X_test, y_test, device)
     print(f"Final accuracy: {final_metrics['clustering_accuracy']:.4f}")
     
-    # get embeddings for visualization
-    print("Generating embeddings for visualization...")
-    model.eval()
-    with torch.no_grad():
-        X_test_tensor = torch.tensor(X_test, dtype=torch.float32).to(device)
-        embeddings = model(X_test_tensor).cpu().numpy()
-    
-    # perform clustering for visualization
-    from sklearn.cluster import KMeans
-    n_clusters = len(np.unique(y_test))
-    kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=42)
-    cluster_labels = kmeans.fit_predict(embeddings)
-    
-    # generate visualizations
-    print("Generating visualizations...")
-    generate_all_visualizations(
-        model=model,
-        embeddings=embeddings,
-        true_labels=y_test,
-        cluster_labels=cluster_labels,
-        training_history=training_history,
-        input_features=config['data']['features'],
-        config=config,
-        output_dir=config['system']['output_dir']
-    )
+    # get embeddings for visualization (use subset for faster processing)
+    if not config['visualization']['skip_visualization']:
+        print("Generating embeddings for visualization...")
+        model.eval()
+        
+        # Use subset of test data for visualization
+        max_samples = config['visualization']['max_test_samples']
+        if len(X_test) > max_samples:
+            print(f"Using {max_samples} samples out of {len(X_test)} for visualization...")
+            # Randomly sample test data
+            np.random.seed(42)
+            indices = np.random.choice(len(X_test), max_samples, replace=False)
+            X_test_viz = X_test[indices]
+            y_test_viz = y_test[indices]
+        else:
+            X_test_viz = X_test
+            y_test_viz = y_test
+        
+        with torch.no_grad():
+            X_test_tensor = torch.tensor(X_test_viz, dtype=torch.float32).to(device)
+            embeddings = model(X_test_tensor).cpu().numpy()
+        
+        # perform clustering for visualization
+        from sklearn.cluster import KMeans
+        n_clusters = len(np.unique(y_test_viz))
+        kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=42)
+        cluster_labels = kmeans.fit_predict(embeddings)
+        
+        # generate visualizations
+        print("Generating visualizations...")
+        generate_all_visualizations(
+            model=model,
+            embeddings=embeddings,
+            true_labels=y_test_viz,
+            cluster_labels=cluster_labels,
+            training_history=training_history,
+            input_features=config['data']['features'],
+            config=config,
+            output_dir=config['system']['output_dir']
+        )
+    else:
+        print("Skipping visualization generation...")
     
     # save final model
     final_model_path = os.path.join(config['system']['output_dir'], 'final_model.pth')

@@ -55,7 +55,17 @@ def plot_clustering_results(embeddings: np.ndarray,
     
     # Reduce dimensionality for visualization
     if method == 'tsne':
-        reducer = TSNE(n_components=2, random_state=42, perplexity=30)
+        # Adjust perplexity based on dataset size
+        n_samples = embeddings.shape[0]
+        if n_samples < 50:
+            perplexity = min(30, n_samples - 1)
+        elif n_samples < 5000:
+            perplexity = 30
+        else:
+            perplexity = 50  # Larger perplexity for bigger datasets
+        
+        print(f"Using t-SNE with perplexity={perplexity} for {n_samples} samples...")
+        reducer = TSNE(n_components=2, random_state=42, perplexity=perplexity, n_iter=1000)
         title_method = 't-SNE'
     elif method == 'pca':
         reducer = PCA(n_components=2, random_state=42)

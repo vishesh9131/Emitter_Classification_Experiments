@@ -43,6 +43,10 @@ def main():
                        default=['PW(µs)', 'Azimuth(º)', 'Elevation(º)', 'Power(dBm)', 'Freq(MHz)'],
                        help='Features to use')
     parser.add_argument('--output_dir', type=str, default='evaluation_results/', help='Output directory')
+    parser.add_argument('--max_test_samples', type=int, default=10000,
+                       help='Maximum number of test samples to use for visualization (default: 10000)')
+    parser.add_argument('--skip_visualization', action='store_true',
+                       help='Skip visualization generation to save time')
     
     args = parser.parse_args()
     
@@ -91,31 +95,48 @@ def main():
     print(f"Number of Clusters: {evaluation_metrics['n_clusters']}")
     print(f"Embedding Shape: {evaluation_metrics['embedding_shape']}")
     
-    # get embeddings for visualization
-    print("Generating embeddings for visualization...")
-    model.eval()
-    with torch.no_grad():
-        X_test_tensor = torch.tensor(X_test, dtype=torch.float32).to(device)
-        embeddings = model(X_test_tensor).cpu().numpy()
-    
-    # perform clustering for visualization
-    from sklearn.cluster import KMeans
-    n_clusters = len(np.unique(y_test))
-    kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=42)
-    cluster_labels = kmeans.fit_predict(embeddings)
-    
-    # generate visualizations
-    print("Generating visualizations...")
-    generate_all_visualizations(
-        model=model,
-        embeddings=embeddings,
-        true_labels=y_test,
-        cluster_labels=cluster_labels,
-        training_history=[],  # Empty for evaluation
-        input_features=args.features,
-        config=config,
-        output_dir=args.output_dir
-    )
+    # get embeddings for visualization (use subset for faster processing)
+    if not args.skip_visualization:
+        print("Generating embeddings for visualization...")
+        model.eval()
+        
+        # Use subset of test data for visualization
+        max_samples = args.max_test_samples
+        if len(X_test) > max_samples:
+            print(f"Using {max_samples} samples out of {len(X_test)} for visualization...")
+            # Randomly sample test data
+            np.random.seed(42)
+            indices = np.random.choice(len(X_test), max_samples, replace=False)
+            X_test_viz = X_test[indices]
+            y_test_viz = y_test[indices]
+        else:
+            X_test_viz = X_test
+            y_test_viz = y_test
+        
+        with torch.no_grad():
+            X_test_tensor = torch.tensor(X_test_viz, dtype=torch.float32).to(device)
+            embeddings = model(X_test_tensor).cpu().numpy()
+        
+        # perform clustering for visualization
+        from sklearn.cluster import KMeans
+        n_clusters = len(np.unique(y_test_viz))
+        kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=42)
+        cluster_labels = kmeans.fit_predict(embeddings)
+        
+        # generate visualizations
+        print("Generating visualizations...")
+        generate_all_visualizations(
+            model=model,
+            embeddings=embeddings,
+            true_labels=y_test_viz,
+            cluster_labels=cluster_labels,
+            training_history=[],  # Empty for evaluation
+            input_features=args.features,
+            config=config,
+            output_dir=args.output_dir
+        )
+    else:
+        print("Skipping visualization generation...")
     
     # save results
     results = {
