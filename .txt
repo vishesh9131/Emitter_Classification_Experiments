@@ -1,0 +1,4 @@
+for loading the model :
+python evaluate.py --model_path results/best_model.pth --test_data raw_dt/rawdataset/ --output_dir evaluation_results/
+
+(use --skip_visualization to save time and skip the plotting hehe)

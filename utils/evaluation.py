@@ -60,16 +60,54 @@ def evaluate_model(model: torch.nn.Module,
         # get embeddings
         embeddings = model(X_tensor).cpu().numpy()
     
-    # perform clustering
-    n_clusters = len(np.unique(y_test))
-    kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=42)
-    cluster_labels = kmeans.fit_predict(embeddings)
-    
-    # compute accuracy
-    accuracy = clustering_accuracy(y_test, cluster_labels)
-    
-    return {
-        'clustering_accuracy': accuracy,
-        'n_clusters': n_clusters,
-        'embedding_shape': embeddings.shape
-    } 
+    # Check if we have real labels or dummy labels
+    unique_labels = np.unique(y_test)
+    if len(unique_labels) == 1 and unique_labels[0] == 0:
+        # This is unlabeled test data with dummy labels
+        print("Warning: Test data appears to be unlabeled (all dummy labels). Using clustering-only evaluation.")
+        
+        # Use silhouette score for unlabeled data
+        from sklearn.metrics import silhouette_score
+        
+        # Try different numbers of clusters and find the best silhouette score
+        best_silhouette = -1
+        best_n_clusters = 2
+        
+        for n_clusters in range(2, min(11, len(embeddings) // 10)):
+            try:
+                kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=42)
+                cluster_labels = kmeans.fit_predict(embeddings)
+                silhouette = silhouette_score(embeddings, cluster_labels)
+                
+                if silhouette > best_silhouette:
+                    best_silhouette = silhouette
+                    best_n_clusters = n_clusters
+            except:
+                continue
+        
+        # Use the best number of clusters
+        kmeans = KMeans(n_clusters=best_n_clusters, n_init=10, random_state=42)
+        cluster_labels = kmeans.fit_predict(embeddings)
+        
+        return {
+            'clustering_accuracy': 0.0,  # Not meaningful for unlabeled data
+            'silhouette_score': best_silhouette,
+            'n_clusters': best_n_clusters,
+            'embedding_shape': embeddings.shape,
+            'note': 'Unlabeled test data - accuracy not meaningful'
+        }
+    else:
+        # This is labeled test data
+        # perform clustering
+        n_clusters = len(unique_labels)
+        kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=42)
+        cluster_labels = kmeans.fit_predict(embeddings)
+        
+        # compute accuracy
+        accuracy = clustering_accuracy(y_test, cluster_labels)
+        
+        return {
+            'clustering_accuracy': accuracy,
+            'n_clusters': n_clusters,
+            'embedding_shape': embeddings.shape
+        } 

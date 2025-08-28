@@ -62,7 +62,7 @@ def main():
     
     # first, we need to create a dummy model to load the state
     # we'll get the config from the checkpoint
-    checkpoint = torch.load(args.model_path, map_location=device)
+    checkpoint = torch.load(args.model_path, map_location=device, weights_only=False)
     config = checkpoint.get('config', {})
     
     # load test data to get input dimension

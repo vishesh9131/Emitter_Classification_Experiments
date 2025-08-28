@@ -22,10 +22,15 @@ class PDWDataset(Dataset):
         return self.features[idx], self.labels[idx]
 
 class TripletPDWDataset(Dataset):
-    """Dataset for triplet loss training"""
-    def __init__(self, features: np.ndarray, labels: np.ndarray):
-        self.features = features
-        self.labels = labels
+    """Dataset for triplet loss training - optimized for GPU"""
+    def __init__(self, features: np.ndarray, labels: np.ndarray, device: torch.device = None):
+        # Convert to tensors once and move to GPU if available
+        self.features = torch.from_numpy(features).float()
+        self.labels = torch.from_numpy(labels).long()
+        
+        if device is not None:
+            self.features = self.features.to(device)
+            self.labels = self.labels.to(device)
         
         # create label to index mapping
         self.label_to_indices = defaultdict(list)
@@ -46,19 +51,19 @@ class TripletPDWDataset(Dataset):
     
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # anchor
-        anchor_features = torch.from_numpy(self.features[idx]).float()
-        anchor_label = self.labels[idx]
+        anchor_features = self.features[idx]
+        anchor_label = self.labels[idx].item()
         
         # positive (same class)
         positive_indices = self.label_to_indices[anchor_label]
         positive_idx = np.random.choice(positive_indices)
-        positive_features = torch.from_numpy(self.features[positive_idx]).float()
+        positive_features = self.features[positive_idx]
         
         # negative (different class)
         negative_label = np.random.choice([l for l in self.label_to_indices if l != anchor_label])
         negative_indices = self.label_to_indices[negative_label]
         negative_idx = np.random.choice(negative_indices)
-        negative_features = torch.from_numpy(self.features[negative_idx]).float()
+        negative_features = self.features[negative_idx]
         
         return anchor_features, positive_features, negative_features
 

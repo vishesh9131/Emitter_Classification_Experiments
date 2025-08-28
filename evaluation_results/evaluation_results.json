@@ -1,0 +1,90 @@
+{
+  "model_path": "results/best_model.pth",
+  "test_data_path": "raw_dt/rawdataset/",
+  "features": [
+    "PW(\u00b5s)",
+    "Azimuth(\u00ba)",
+    "Elevation(\u00ba)",
+    "Power(dBm)",
+    "Freq(MHz)"
+  ],
+  "evaluation_metrics": {
+    "clustering_accuracy": 0.30444291117093036,
+    "n_clusters": 12,
+    "embedding_shape": [
+      4733518,
+      32
+    ]
+  },
+  "model_config": {
+    "model": {
+      "type": "mlp",
+      "layers": [
+        64,
+        64,
+        64
+      ],
+      "dropout": 0.3,
+      "residual": true,
+      "embed_dim": 32
+    },
+    "loss": {
+      "margin": 1.0,
+      "type": "triplet_margin",
+      "temperature": 0.1
+    },
+    "training": {
+      "batch_size": 64,
+      "epochs": 50,
+      "learning_rate": 0.001,
+      "weight_decay": 0.0001,
+      "scheduler": "cosine",
+      "warmup_epochs": 2,
+      "eval_every": 10,
+      "save_every": 20
+    },
+    "data": {
+      "train_path": "dataset/",
+      "test_path": "raw_dt/rawdataset/",
+      "features": [
+        "PW(\u00b5s)",
+        "Azimuth(\u00ba)",
+        "Elevation(\u00ba)",
+        "Power(dBm)",
+        "Freq(MHz)"
+      ],
+      "label_col": "Name"
+    },
+    "system": {
+      "gpus": 1,
+      "num_workers": 4,
+      "seed": 42,
+      "output_dir": "results/"
+    },
+    "evaluation": {
+      "eval_only": false,
+      "model_path": null
+    },
+    "visualization": {
+      "max_test_samples": 10000,
+      "skip_visualization": false
+    }
+  },
+  "label_mapping": {
+    "0": "A",
+    "1": "E",
+    "2": "F",
+    "3": "C",
+    "4": "G",
+    "5": "B",
+    "6": "H",
+    "7": "I",
+    "8": "D",
+    "9": "J",
+    "10": "S3",
+    "11": "S4",
+    "12": "S1",
+    "13": "S2",
+    "14": "T"
+  }
+}

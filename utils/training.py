@@ -108,7 +108,8 @@ def load_model(model: nn.Module,
     Returns:
         Tuple of (model, config, metrics)
     """
-    checkpoint = torch.load(load_path, map_location=device)
+    # Load with weights_only=False to handle older PyTorch checkpoints
+    checkpoint = torch.load(load_path, map_location=device, weights_only=False)
     
     # load model state
     model.load_state_dict(checkpoint['model_state_dict'])

@@ -22,7 +22,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from config import get_parser, get_config
 from models import EmitterEncoder, FTTransformer, DualEncoder
 from losses import TripletLoss, NTXentLoss, SupConLoss, InfoNCELoss
-from data import TripletPDWDataset, PairPDWDataset, PDWDataset, load_data
+from data import TripletPDWDataset, PairPDWDataset, PDWDataset, load_data, load_data_with_files
 from utils import setup_training, save_model, load_model, evaluate_model, set_seed, generate_all_visualizations
 
 def get_model(model_config: Dict[str, Any], input_dim: int) -> nn.Module:
@@ -53,10 +53,10 @@ def get_loss(loss_config: Dict[str, Any]) -> nn.Module:
     else:
         raise ValueError(f"Unknown loss type: {loss_type}")
 
-def get_dataset(dataset_type: str, features: np.ndarray, labels: np.ndarray):
+def get_dataset(dataset_type: str, features: np.ndarray, labels: np.ndarray, device: torch.device = None):
     """Get dataset based on type"""
     if dataset_type == 'triplet':
-        return TripletPDWDataset(features, labels)
+        return TripletPDWDataset(features, labels, device)
     elif dataset_type == 'pair':
         return PairPDWDataset(features, labels)
     elif dataset_type == 'basic':
@@ -80,10 +80,7 @@ def train_epoch(model: nn.Module,
         
         if loss_type == 'triplet_margin':
             anchor, positive, negative = batch
-            anchor = anchor.to(device)
-            positive = positive.to(device)
-            negative = negative.to(device)
-            
+            # Data is already on GPU from dataset
             anchor_emb = model(anchor)
             positive_emb = model(positive)
             negative_emb = model(negative)
@@ -92,9 +89,7 @@ def train_epoch(model: nn.Module,
             
         elif loss_type == 'nt_xent':
             anchor, positive = batch
-            anchor = anchor.to(device)
-            positive = positive.to(device)
-            
+            # Data is already on GPU from dataset
             anchor_emb = model(anchor)
             positive_emb = model(positive)
             
@@ -102,17 +97,13 @@ def train_epoch(model: nn.Module,
             
         elif loss_type == 'supervised_contrastive':
             features, labels = batch
-            features = features.to(device)
-            labels = labels.to(device)
-            
+            # Data is already on GPU from dataset
             embeddings = model(features)
             loss = criterion(embeddings, labels)
             
         elif loss_type == 'info_nce':
             anchor, positive = batch
-            anchor = anchor.to(device)
-            positive = positive.to(device)
-            
+            # Data is already on GPU from dataset
             anchor_emb = model(anchor)
             positive_emb = model(positive)
             
@@ -147,12 +138,38 @@ def main():
     
     # load data
     print("Loading data...")
-    X_train, y_train, X_test, y_test, label_mapping, scaler = load_data(
-        config['data']['train_path'],
-        config['data']['test_path'],
-        config['data']['features'],
-        config['data']['label_col']
-    )
+    
+    # Check if specific files are provided
+    if config['data']['train_files'] is not None or config['data']['test_files'] is not None:
+        # Use specific files from raw dataset
+        train_files = config['data']['train_files'] or []
+        test_files = config['data']['test_files'] or []
+        
+        # If no specific files provided, use all files from raw dataset
+        if not train_files and not test_files:
+            raw_path = config['data']['raw_dataset_path']
+            all_files = [os.path.join(raw_path, f) for f in os.listdir(raw_path) 
+                        if f.endswith(('.csv', '.xls', '.xlsx'))]
+            train_files = all_files[:len(all_files)//2]  # First half for training
+            test_files = all_files[len(all_files)//2:]   # Second half for testing
+        
+        print(f"Loading training files: {train_files}")
+        print(f"Loading test files: {test_files}")
+        
+        X_train, y_train, X_test, y_test, label_mapping, scaler = load_data_with_files(
+            train_files,
+            test_files,
+            config['data']['features'],
+            config['data']['label_col']
+        )
+    else:
+        # Use original directory-based loading
+        X_train, y_train, X_test, y_test, label_mapping, scaler = load_data(
+            config['data']['train_path'],
+            config['data']['test_path'],
+            config['data']['features'],
+            config['data']['label_col']
+        )
     
     print(f"Training data shape: {X_train.shape}")
     print(f"Test data shape: {X_test.shape}")
@@ -170,13 +187,13 @@ def main():
         raise ValueError(f"Unknown loss type: {loss_type}")
     
     # create dataset and dataloader
-    train_dataset = get_dataset(dataset_type, X_train, y_train)
+    train_dataset = get_dataset(dataset_type, X_train, y_train, device)
     train_loader = DataLoader(
         train_dataset,
         batch_size=config['training']['batch_size'],
         shuffle=True,
-        num_workers=config['system']['num_workers'],
-        pin_memory=True
+        num_workers=0,  # Use 0 workers since data is already on GPU
+        pin_memory=False  # Disable pin_memory since data is already on GPU
     )
     
     # create model

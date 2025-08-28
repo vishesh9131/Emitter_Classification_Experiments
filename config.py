@@ -133,6 +133,30 @@ def get_parser() -> argparse.ArgumentParser:
         help='Path to test dataset directory'
     )
     
+    # Specific files for training (new feature)
+    parser.add_argument(
+        '--train_files', 
+        type=str, 
+        nargs='+',
+        default=None,
+        help='Specific training files from raw dataset (e.g., raw_dt/rawdataset/Raw_1.csv)'
+    )
+    
+    parser.add_argument(
+        '--test_files', 
+        type=str, 
+        nargs='+',
+        default=None,
+        help='Specific test files from raw dataset (e.g., raw_dt/rawdataset/s6_1.csv)'
+    )
+    
+    parser.add_argument(
+        '--raw_dataset_path',
+        type=str,
+        default='raw_dt/rawdataset/',
+        help='Base path to raw dataset directory'
+    )
+    
     parser.add_argument(
         '--output_dir', 
         type=str, 
@@ -196,7 +220,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '--num_workers', 
         type=int, 
-        default=4,
+        default=1,
         help='Number of data loading workers'
     )
     
@@ -256,7 +280,10 @@ def get_config(args: argparse.Namespace) -> Dict[str, Any]:
             'train_path': args.train_data,
             'test_path': args.test_data,
             'features': args.features,
-            'label_col': 'Name'
+            'label_col': 'Name',
+            'train_files': args.train_files,
+            'test_files': args.test_files,
+            'raw_dataset_path': args.raw_dataset_path
         },
         'system': {
             'gpus': args.gpus,

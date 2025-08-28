@@ -65,7 +65,7 @@ def plot_clustering_results(embeddings: np.ndarray,
             perplexity = 50  # Larger perplexity for bigger datasets
         
         print(f"Using t-SNE with perplexity={perplexity} for {n_samples} samples...")
-        reducer = TSNE(n_components=2, random_state=42, perplexity=perplexity, n_iter=1000)
+        reducer = TSNE(n_components=2, random_state=42, perplexity=perplexity, max_iter=1000)
         title_method = 't-SNE'
     elif method == 'pca':
         reducer = PCA(n_components=2, random_state=42)
@@ -150,16 +150,47 @@ def plot_embedding_distribution(embeddings: np.ndarray,
     axes = axes.ravel()
     
     # Plot histogram of embedding values
-    axes[0].hist(embeddings.flatten(), bins=50, alpha=0.7, color='skyblue', edgecolor='black')
-    axes[0].set_title('Distribution of Embedding Values', fontweight='bold')
+    # Handle edge case where data has very small range
+    embedding_values = embeddings.flatten()
+    data_range = np.max(embedding_values) - np.min(embedding_values)
+    
+    if data_range == 0:
+        # All values are identical - just plot a single bar
+        axes[0].bar([np.mean(embedding_values)], [len(embedding_values)], 
+                   width=0.1, alpha=0.7, color='skyblue', edgecolor='black')
+        axes[0].set_title('Distribution of Embedding Values (All Identical)', fontweight='bold')
+    else:
+        # Calculate appropriate number of bins
+        n_bins = min(max(int(np.log2(len(embedding_values)) + 1), 2), 20)
+        try:
+            axes[0].hist(embedding_values, bins=n_bins, alpha=0.7, color='skyblue', edgecolor='black')
+        except ValueError:
+            # If still fails, use just 2 bins
+            axes[0].hist(embedding_values, bins=2, alpha=0.7, color='skyblue', edgecolor='black')
+        axes[0].set_title('Distribution of Embedding Values', fontweight='bold')
+    
     axes[0].set_xlabel('Embedding Value')
     axes[0].set_ylabel('Frequency')
     axes[0].grid(True, alpha=0.3)
     
     # Plot embedding norms
     norms = np.linalg.norm(embeddings, axis=1)
-    axes[1].hist(norms, bins=50, alpha=0.7, color='lightgreen', edgecolor='black')
-    axes[1].set_title('Distribution of Embedding Norms', fontweight='bold')
+    norm_range = np.max(norms) - np.min(norms)
+    
+    if norm_range == 0:
+        # All norms are identical - just plot a single bar
+        axes[1].bar([np.mean(norms)], [len(norms)], 
+                   width=0.1, alpha=0.7, color='lightgreen', edgecolor='black')
+        axes[1].set_title('Distribution of Embedding Norms (All Identical)', fontweight='bold')
+    else:
+        # Calculate appropriate number of bins
+        n_bins_norm = min(max(int(np.log2(len(norms)) + 1), 2), 20)
+        try:
+            axes[1].hist(norms, bins=n_bins_norm, alpha=0.7, color='lightgreen', edgecolor='black')
+        except ValueError:
+            # If still fails, use just 2 bins
+            axes[1].hist(norms, bins=2, alpha=0.7, color='lightgreen', edgecolor='black')
+        axes[1].set_title('Distribution of Embedding Norms', fontweight='bold')
     axes[1].set_xlabel('L2 Norm')
     axes[1].set_ylabel('Frequency')
     axes[1].grid(True, alpha=0.3)
