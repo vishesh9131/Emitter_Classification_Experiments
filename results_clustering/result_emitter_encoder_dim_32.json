@@ -1,0 +1,8 @@
+{
+  "model": "emitter_encoder",
+  "embedding_dim": 32,
+  "test_acc": 0.0,
+  "final_loss": 0.1150500110744201,
+  "best_accuracy": 0.0,
+  "final_accuracy": 0.0
+}

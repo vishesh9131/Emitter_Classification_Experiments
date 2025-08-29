@@ -19,7 +19,7 @@ class FeatureTokenizer(nn.Module):
         # x shape: (batch_size, num_features)
         batch_size = x.shape[0]
         
-        # create feature indices
+        # create feature indices on the same device as input
         feature_indices = torch.arange(x.shape[1], device=x.device).unsqueeze(0).expand(batch_size, -1)
         
         # get embeddings for each feature
@@ -66,6 +66,8 @@ class FTTransformer(nn.Module):
         
         # output projection
         self.output_proj = nn.Linear(embed_dim, embed_dim)
+        
+
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass with L2 normalization"""

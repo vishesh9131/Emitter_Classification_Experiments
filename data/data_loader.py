@@ -9,8 +9,103 @@ import numpy as np
 from sklearn.preprocessing import RobustScaler
 from typing import Tuple, Dict, List, Optional
 import warnings
+import torch
 
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
+
+def gpu_robust_scale(features: np.ndarray, device: torch.device = None) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    GPU-optimized robust scaling using PyTorch operations
+    
+    Args:
+        features: Input features as numpy array
+        device: Target device for GPU operations
+        
+    Returns:
+        Tuple of (scaled_features, median, iqr) all on GPU
+    """
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    # convert to tensor and move to GPU
+    features_tensor = torch.from_numpy(features).float().to(device)
+    
+    # compute median and IQR on GPU
+    median = torch.median(features_tensor, dim=0)[0]
+    q75 = torch.quantile(features_tensor, 0.75, dim=0)[0]
+    q25 = torch.quantile(features_tensor, 0.25, dim=0)[0]
+    iqr = q75 - q25
+    
+    # avoid division by zero
+    iqr = torch.where(iqr == 0, torch.ones_like(iqr), iqr)
+    
+    # scale features
+    scaled_features = (features_tensor - median) / iqr
+    
+    return scaled_features, median, iqr
+
+def gpu_apply_robust_scale(features: np.ndarray, median: torch.Tensor, iqr: torch.Tensor, 
+                          device: torch.device = None) -> torch.Tensor:
+    """
+    Apply pre-computed robust scaling on GPU
+    
+    Args:
+        features: Input features as numpy array
+        median: Pre-computed median on GPU
+        iqr: Pre-computed IQR on GPU
+        device: Target device for GPU operations
+        
+    Returns:
+        Scaled features on GPU
+    """
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    features_tensor = torch.from_numpy(features).float().to(device)
+    scaled_features = (features_tensor - median) / iqr
+    
+    return scaled_features
+
+def gpu_preprocess_data(df: pd.DataFrame, features: List[str], label_col: str = 'Name',
+                       device: torch.device = None, min_samples_per_class: int = 10) -> Tuple[torch.Tensor, torch.Tensor, Dict, torch.Tensor, torch.Tensor]:
+    """
+    GPU-optimized data preprocessing
+    
+    Args:
+        df: Input DataFrame
+        features: List of feature column names
+        label_col: Name of the label column
+        device: Target device for GPU operations
+        min_samples_per_class: Minimum samples required per class
+        
+    Returns:
+        Tuple of (X, y, label_mapping, median, iqr) all on GPU
+    """
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    # filter classes with insufficient samples
+    label_counts = df[label_col].value_counts()
+    valid_labels = label_counts[label_counts >= min_samples_per_class].index
+    df_filtered = df[df[label_col].isin(valid_labels)]
+    
+    if len(valid_labels) < 2:
+        raise ValueError(f"Need at least 2 classes with {min_samples_per_class}+ samples each")
+    
+    # extract features and labels
+    X = df_filtered[features].values.astype(np.float32)
+    y, unique_labels = pd.factorize(df_filtered[label_col])
+    
+    # create label mapping
+    label_mapping = {i: name for i, name in enumerate(unique_labels)}
+    
+    # perform GPU scaling
+    X_scaled, median, iqr = gpu_robust_scale(X, device)
+    y_tensor = torch.from_numpy(y).long().to(device)
+    
+    print(f"GPU preprocessing complete: {X_scaled.shape[0]} samples, {len(label_mapping)} classes")
+    
+    return X_scaled, y_tensor, label_mapping, median, iqr
 
 def load_excel_data(data_path: str, features: List[str], label_col: str = 'Name') -> pd.DataFrame:
     """
@@ -109,7 +204,7 @@ def load_csv_data(data_path: str, features: List[str], label_col: str = 'Name') 
         'Power(dBm)': 'Power ',
         'PW(µs)': 'PW(usec)',
         'Freq(MHz)': 'Frequency(MHz)',
-        'Name': 'Name'  # assuming Name column exists or we'll handle it differently
+        'Name': 'Name' 
     }
     
     # get all CSV files in the directory
